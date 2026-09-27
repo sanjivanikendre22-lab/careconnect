@@ -1,0 +1,274 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Dashboard | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2>Coordination Dashboard</h2>
+    <p>Real-time clinic flow, emergency dispatches, and community blood logistics overview.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('patients') }}" class="btn btn-outline"><i class="fa-solid fa-user-plus me-1"></i> Add Patient</a>
+    <a href="{{ url_for('appointments') }}" class="btn btn-primary"><i class="fa-solid fa-calendar-plus me-1"></i> Book Appointment</a>
+  </div>
+</div>
+
+<!-- Stats Metric Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon icon-teal">
+      <i class="fa-solid fa-users"></i>
+    </div>
+    <div class="stat-info">
+      <div class="stat-value">{{ stats.total_patients }}</div>
+      <div class="stat-label">Total Patients</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon icon-blue">
+      <i class="fa-solid fa-calendar-day"></i>
+    </div>
+    <div class="stat-info">
+      <div class="stat-value">{{ stats.today_appointments }}</div>
+      <div class="stat-label">Today's Visits</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon icon-indigo">
+      <i class="fa-solid fa-clock"></i>
+    </div>
+    <div class="stat-info">
+      <div class="stat-value">{{ stats.pending_appointments }}</div>
+      <div class="stat-label">Pending Visits</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon icon-emerald">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <div class="stat-info">
+      <div class="stat-value">{{ stats.completed_appointments }}</div>
+      <div class="stat-label">Completed Visits</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon icon-amber">
+      <i class="fa-solid fa-truck-medical"></i>
+    </div>
+    <div class="stat-info">
+      <div class="stat-value">{{ stats.pending_ambulance }}</div>
+      <div class="stat-label">Active Ambulances</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon icon-rose">
+      <i class="fa-solid fa-droplet"></i>
+    </div>
+    <div class="stat-info">
+      <div class="stat-value">{{ stats.active_blood }}</div>
+      <div class="stat-label">Active Blood Needs</div>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Analytics Charts -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 1.75rem;">
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-chart-pie text-muted"></i> Appointment Status Breakdown
+      </div>
+    </div>
+    <div class="card-body" style="height: 230px; position: relative;">
+      <canvas id="appointmentsChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-chart-column text-muted"></i> Active Blood Demand (Units Required)
+      </div>
+    </div>
+    <div class="card-body" style="height: 230px; position: relative;">
+      <canvas id="bloodChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Live Operational Boards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.5rem; margin-bottom: 1.75rem;">
+  <!-- Active Ambulance Dispatches -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-truck-medical text-danger"></i> Active Ambulance Dispatches
+      </div>
+      <a href="{{ url_for('ambulance') }}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Caller / Escort</th>
+              <th>Urgency</th>
+              <th>Route</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if active_ambulance %}
+              {% for amb in active_ambulance %}
+              <tr>
+                <td>
+                  <strong>{{ amb.patient_name }}</strong><br>
+                  <small class="text-muted"><i class="fa-solid fa-phone"></i> {{ amb.contact_number }}</small>
+                </td>
+                <td>
+                  <span class="badge {% if amb.emergency_level == 'Critical' %}badge-critical{% elif amb.emergency_level == 'Urgent' %}badge-urgent{% else %}badge-normal{% endif %}">
+                    {{ amb.emergency_level }}
+                  </span>
+                </td>
+                <td>
+                  <small style="color: #475569;">{{ amb.pickup_location }}</small><br>
+                  <small style="color: #0d9488;"><i class="fa-solid fa-arrow-right"></i> {{ amb.destination }}</small>
+                </td>
+                <td>
+                  <span class="badge {% if amb.status == 'En Route' %}badge-enroute{% elif amb.status == 'Assigned' %}badge-assigned{% else %}badge-pending{% endif %}">
+                    {{ amb.status }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                  <i class="fa-solid fa-circle-check fa-2x mb-2"></i><br>
+                  No pending ambulance requests. All fleets stand ready.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent / Today's Appointments -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-calendar-check text-primary"></i> Clinic Visits Queue
+      </div>
+      <a href="{{ url_for('appointments') }}" class="btn btn-outline btn-sm">Manage</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Schedule</th>
+              <th>Doctor / Purpose</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if recent_appointments %}
+              {% for apt in recent_appointments %}
+              <tr>
+                <td>
+                  <strong>{{ apt.patient_name }}</strong><br>
+                  <small class="text-muted">{{ apt.patient_id }}</small>
+                </td>
+                <td>
+                  <span>{{ apt.date }}</span><br>
+                  <small class="text-muted"><i class="fa-regular fa-clock"></i> {{ apt.time }}</small>
+                </td>
+                <td>
+                  <strong style="font-size: 0.82rem;">{{ apt.doctor_name }}</strong><br>
+                  <small class="text-muted">{{ apt.purpose }}</small>
+                </td>
+                <td>
+                  <span class="badge {% if apt.status == 'Completed' %}badge-completed{% elif apt.status == 'Cancelled' %}badge-cancelled{% else %}badge-scheduled{% endif %}">
+                    {{ apt.status }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                  No scheduled clinic appointments.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Active Blood Requirements Highlight -->
+<div class="card" style="margin-top: 1.5rem;">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-droplet text-danger"></i> Urgent Blood Requirements (Hospital Logistics)
+    </div>
+    <a href="{{ url_for('blood') }}" class="btn btn-outline btn-sm">View All Blood Demands</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Blood Group</th>
+            <th>Required Units</th>
+            <th>Facility / Hospital</th>
+            <th>Location</th>
+            <th>Contact Coordinator</th>
+            <th>Needed By</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if active_blood_reqs %}
+            {% for bld in active_blood_reqs %}
+            <tr>
+              <td><span class="badge badge-blood" style="font-size: 0.85rem;">{{ bld.blood_group }}</span></td>
+              <td><strong>{{ bld.units_required }} Unit(s)</strong></td>
+              <td>{{ bld.hospital_name }}</td>
+              <td><i class="fa-solid fa-location-dot text-muted me-1"></i> {{ bld.location }}</td>
+              <td><a href="tel:{{ bld.contact_number }}" style="color: var(--primary); text-decoration: none; font-weight: 500;"><i class="fa-solid fa-phone me-1"></i> {{ bld.contact_number }}</a></td>
+              <td>{{ bld.required_date }}</td>
+              <td>
+                <form action="{{ url_for('update_blood_status', req_id=bld.id) }}" method="POST" style="display:inline;">
+                  <input type="hidden" name="status" value="Fulfilled">
+                  <button type="submit" class="btn btn-outline btn-sm" title="Mark as Fulfilled">
+                    <i class="fa-solid fa-check text-success"></i> Fulfill
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                No active blood deficit reported.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

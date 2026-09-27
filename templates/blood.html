@@ -1,0 +1,161 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Blood Requirements | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2>Blood Requirements Board</h2>
+    <p>Coordinate urgent blood unit logistics between clinics, hospitals, and regional blood banks.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" onclick="openModal('addBloodModal')">
+      <i class="fa-solid fa-droplet me-1"></i> Post Blood Requirement
+    </button>
+  </div>
+</div>
+
+<!-- Clear Demo / Sample Data Notice -->
+<div class="alert alert-info" style="display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 1.5rem;">
+  <i class="fa-solid fa-info-circle fa-lg mt-1 text-info"></i>
+  <div>
+    <strong>DEMO DATA & SAMPLE WORKFLOW NOTICE:</strong>
+    Blood requirements displayed below are simulated demo records for logistical coordination workflows. This platform does not claim real-time automated blood bank integration unless directly verified with the respective institution.
+  </div>
+</div>
+
+<!-- Blood Group Filter Pills & Search -->
+<div class="filter-bar">
+  <div class="filter-tabs">
+    <a href="{{ url_for('blood', group='ALL', location=location_filter, status=status_filter, q=search_query) }}" class="filter-btn {% if blood_group_filter == 'ALL' %}active{% endif %}">ALL GROUPS</a>
+    {% for bg in blood_groups %}
+    <a href="{{ url_for('blood', group=bg, location=location_filter, status=status_filter, q=search_query) }}" class="filter-btn {% if blood_group_filter == bg %}active{% endif %}">{{ bg }}</a>
+    {% endfor %}
+  </div>
+
+  <form action="{{ url_for('blood') }}" method="GET" class="search-form">
+    <input type="hidden" name="group" value="{{ blood_group_filter }}">
+    <select name="status" class="form-control" style="width: auto; padding: 0.45rem 0.75rem; font-size: 0.85rem;" onchange="this.form.submit()">
+      <option value="All" {% if status_filter == 'All' %}selected{% endif %}>All Status</option>
+      <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active Only</option>
+      <option value="Fulfilled" {% if status_filter == 'Fulfilled' %}selected{% endif %}>Fulfilled</option>
+      <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+    </select>
+    <input type="text" name="location" class="search-input" placeholder="Filter by location (e.g. Pune, Kothrud)..." value="{{ location_filter }}" style="min-width: 170px;">
+    <button type="submit" class="btn btn-outline"><i class="fa-solid fa-magnifying-glass"></i></button>
+    {% if location_filter or status_filter != 'All' or blood_group_filter != 'ALL' %}
+    <a href="{{ url_for('blood') }}" class="btn btn-outline" title="Reset Filters"><i class="fa-solid fa-xmark"></i></a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Requirements Grid -->
+<div class="grid-cards" style="margin-bottom: 2rem;">
+  {% if requirements %}
+    {% for req in requirements %}
+    <div class="directory-card" style="border-left: 4px solid {% if req.status == 'Active' %}#e11d48{% elif req.status == 'Fulfilled' %}#10b981{% else %}#94a3b8{% endif %};">
+      <div>
+        <div class="directory-header">
+          <div>
+            <span class="badge badge-blood" style="font-size: 1rem; padding: 0.25rem 0.65rem;">{{ req.blood_group }}</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: #1e293b; margin-left: 0.5rem;">{{ req.units_required }} Unit(s) Needed</span>
+          </div>
+          <span class="badge {% if req.status == 'Active' %}badge-active{% elif req.status == 'Fulfilled' %}badge-fulfilled{% else %}badge-cancelled{% endif %}">
+            {{ req.status }}
+          </span>
+        </div>
+
+        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.35rem;">Req ID: <strong>{{ req.id }}</strong></div>
+        <div class="directory-title">{{ req.hospital_name }}</div>
+
+        <div class="directory-info" style="margin-top: 0.5rem;">
+          <div><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ req.location }}</div>
+          <div><i class="fa-regular fa-calendar-check text-muted me-1"></i> Needed by: <strong>{{ req.required_date }}</strong></div>
+          <div><i class="fa-solid fa-phone text-muted me-1"></i> <a href="tel:{{ req.contact_number }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">{{ req.contact_number }}</a></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.75rem; color: #94a3b8;">Posted: {{ req.created_at[:10] }}</span>
+        <form action="{{ url_for('update_blood_status', req_id=req.id) }}" method="POST" style="display: flex; gap: 0.35rem;">
+          {% if req.status == 'Active' %}
+          <input type="hidden" name="status" value="Fulfilled">
+          <button type="submit" class="btn btn-outline btn-sm" title="Mark as Fulfilled">
+            <i class="fa-solid fa-check text-success me-1"></i> Fulfilled
+          </button>
+          {% elif req.status == 'Fulfilled' %}
+          <input type="hidden" name="status" value="Active">
+          <button type="submit" class="btn btn-outline btn-sm" title="Reactivate Request">
+            <i class="fa-solid fa-rotate-left me-1"></i> Reopen
+          </button>
+          {% else %}
+          <input type="hidden" name="status" value="Active">
+          <button type="submit" class="btn btn-outline btn-sm">Reopen</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border-color); color: #94a3b8;">
+      <i class="fa-solid fa-droplet-slash fa-2x mb-2"></i><br>
+      No blood requirements matching your selected group or location filter.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Post Blood Requirement Modal -->
+<div class="modal-overlay" id="addBloodModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-droplet text-danger me-2"></i> Post Blood Requirement</h3>
+      <button class="modal-close" onclick="closeModal('addBloodModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_blood_requirement') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Blood Group *</label>
+            <select name="blood_group" class="form-control" required>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+" selected>O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Units Required (Bottles/Pints) *</label>
+            <input type="number" name="units_required" class="form-control" min="1" max="100" placeholder="e.g. 2" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hospital / Blood Bank / Clinic Name *</label>
+          <input type="text" name="hospital_name" class="form-control" placeholder="e.g. Flora City General Hospital" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location / City Area *</label>
+          <input type="text" name="location" class="form-control" placeholder="e.g. Hinjewadi Phase 1, Pune" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Coordinator Contact Phone *</label>
+            <input type="text" name="contact_number" class="form-control" placeholder="+91 20 2544 0000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Required By Date *</label>
+            <input type="date" name="required_date" class="form-control" value="{{ current_date }}" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('addBloodModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> Post Requirement</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

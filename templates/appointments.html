@@ -1,0 +1,169 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Appointments | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2>Clinic Appointments</h2>
+    <p>Schedule patient visits, allocate clinic doctors, and coordinate daily consultations.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" onclick="openModal('bookAppointmentModal')">
+      <i class="fa-solid fa-calendar-plus me-1"></i> Book New Appointment
+    </button>
+  </div>
+</div>
+
+<!-- Filters & Search -->
+<div class="filter-bar">
+  <div class="filter-tabs">
+    <a href="{{ url_for('appointments', filter='all', q=search_query) }}" class="filter-btn {% if filter_status == 'all' %}active{% endif %}">All</a>
+    <a href="{{ url_for('appointments', filter='today', q=search_query) }}" class="filter-btn {% if filter_status == 'today' %}active{% endif %}">Today</a>
+    <a href="{{ url_for('appointments', filter='upcoming', q=search_query) }}" class="filter-btn {% if filter_status == 'upcoming' %}active{% endif %}">Upcoming</a>
+    <a href="{{ url_for('appointments', filter='completed', q=search_query) }}" class="filter-btn {% if filter_status == 'completed' %}active{% endif %}">Completed</a>
+    <a href="{{ url_for('appointments', filter='cancelled', q=search_query) }}" class="filter-btn {% if filter_status == 'cancelled' %}active{% endif %}">Cancelled</a>
+  </div>
+
+  <form action="{{ url_for('appointments') }}" method="GET" class="search-form">
+    <input type="hidden" name="filter" value="{{ filter_status }}">
+    <input type="text" name="q" class="search-input" placeholder="Search patient, doctor, purpose..." value="{{ search_query }}">
+    <button type="submit" class="btn btn-outline"><i class="fa-solid fa-magnifying-glass"></i></button>
+    {% if search_query %}
+    <a href="{{ url_for('appointments', filter=filter_status) }}" class="btn btn-outline" title="Clear search"><i class="fa-solid fa-xmark"></i></a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Appointments Table -->
+<div class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Appt ID</th>
+            <th>Patient</th>
+            <th>Date & Time</th>
+            <th>Assigned Doctor / Staff</th>
+            <th>Purpose of Visit</th>
+            <th>Current Status</th>
+            <th style="text-align: right;">Update Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if appointments %}
+            {% for apt in appointments %}
+            <tr>
+              <td><strong style="color: var(--primary);">{{ apt.id }}</strong></td>
+              <td>
+                <div style="font-weight: 600;">{{ apt.patient_name }}</div>
+                <small class="text-muted"><i class="fa-solid fa-id-card"></i> {{ apt.patient_id }}</small>
+              </td>
+              <td>
+                <span style="font-weight: 500;">{{ apt.date }}</span><br>
+                <small class="text-muted"><i class="fa-regular fa-clock"></i> {{ apt.time }}</small>
+              </td>
+              <td>
+                <strong style="color: #334155;">{{ apt.doctor_name }}</strong>
+              </td>
+              <td>
+                <span style="color: #475569;">{{ apt.purpose }}</span>
+              </td>
+              <td>
+                <span class="badge {% if apt.status == 'Completed' %}badge-completed{% elif apt.status == 'Cancelled' %}badge-cancelled{% else %}badge-scheduled{% endif %}">
+                  {{ apt.status }}
+                </span>
+              </td>
+              <td style="text-align: right;">
+                <form action="{{ url_for('update_appointment_status', appt_id=apt.id) }}" method="POST" style="display: inline-block;">
+                  <select name="status" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto; display: inline-block;" onchange="submitStatusForm(this)">
+                    <option value="Scheduled" {% if apt.status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                    <option value="Completed" {% if apt.status == 'Completed' %}selected{% endif %}>Completed</option>
+                    <option value="Cancelled" {% if apt.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                  </select>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                <i class="fa-regular fa-calendar-xmark fa-2x mb-2"></i><br>
+                No appointments found for the selected filter.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Book Appointment Modal -->
+<div class="modal-overlay" id="bookAppointmentModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-calendar-plus text-primary me-2"></i> Book Clinic Appointment</h3>
+      <button class="modal-close" onclick="closeModal('bookAppointmentModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('book_appointment') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Select Registered Patient (or leave as Walk-in)</label>
+          <select name="patient_id" class="form-control" onchange="document.getElementById('manual_patient_name').value = this.options[this.selectedIndex].text.split(' (')[0];">
+            <option value="">-- Choose Registered Patient --</option>
+            {% for p in all_patients %}
+            <option value="{{ p.id }}">{{ p.name }} ({{ p.id }} - {{ p.phone }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Patient Name (Required if not selected above) *</label>
+          <input type="text" id="manual_patient_name" name="patient_name" class="form-control" placeholder="Enter patient name" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Appointment Date *</label>
+            <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Time Slot *</label>
+            <select name="time" class="form-control" required>
+              <option value="09:00 AM">09:00 AM</option>
+              <option value="09:30 AM">09:30 AM</option>
+              <option value="10:00 AM">10:00 AM</option>
+              <option value="10:30 AM">10:30 AM</option>
+              <option value="11:00 AM">11:00 AM</option>
+              <option value="11:30 AM">11:30 AM</option>
+              <option value="02:00 PM">02:00 PM</option>
+              <option value="02:30 PM">02:30 PM</option>
+              <option value="03:00 PM">03:00 PM</option>
+              <option value="03:30 PM">03:30 PM</option>
+              <option value="04:00 PM">04:00 PM</option>
+              <option value="05:00 PM">05:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assigned Doctor / Healthcare Staff *</label>
+          <select name="doctor_name" class="form-control" required>
+            <option value="Dr. Sneha Mehta (General Physician)">Dr. Sneha Mehta (General Physician)</option>
+            <option value="Dr. Arjun Patil (Orthopedic Surgeon)">Dr. Arjun Patil (Orthopedic Surgeon)</option>
+            <option value="Dr. Rohan Verma (Cardiologist)">Dr. Rohan Verma (Cardiologist)</option>
+            <option value="Dr. Kavita Nair (Pediatrician)">Dr. Kavita Nair (Pediatrician)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purpose of Visit *</label>
+          <input type="text" name="purpose" class="form-control" placeholder="e.g. Blood Pressure checkup, Follow-up consultation" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('bookAppointmentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i> Book Appointment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

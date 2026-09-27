@@ -1,0 +1,169 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CareConnect – Clinic & Emergency Coordination System{% endblock %}</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <!-- Sidebar Navigation -->
+  <aside class="app-sidebar">
+    <div class="brand-section">
+      <a href="{{ url_for('dashboard') }}" class="brand-logo">
+        <div class="brand-icon">
+          <i class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div class="brand-text">
+          <h1>CARECONNECT</h1>
+          <p>Clinic & Emergency Logistics</p>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="{{ url_for('patients') }}" class="nav-link {% if request.endpoint == 'patients' %}active{% endif %}">
+        <i class="fa-solid fa-user-group"></i>
+        <span>Patients</span>
+      </a>
+      <a href="{{ url_for('appointments') }}" class="nav-link {% if request.endpoint == 'appointments' %}active{% endif %}">
+        <i class="fa-solid fa-calendar-check"></i>
+        <span>Appointments</span>
+      </a>
+      <a href="{{ url_for('ambulance') }}" class="nav-link {% if request.endpoint == 'ambulance' %}active{% endif %}">
+        <i class="fa-solid fa-truck-medical"></i>
+        <span>Ambulance</span>
+        {% if critical_amb_count and critical_amb_count > 0 %}
+        <span class="nav-badge">{{ critical_amb_count }} SOS</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('blood') }}" class="nav-link {% if request.endpoint == 'blood' %}active{% endif %}">
+        <i class="fa-solid fa-droplet"></i>
+        <span>Blood Requirements</span>
+      </a>
+      <a href="{{ url_for('facilities') }}" class="nav-link {% if request.endpoint == 'facilities' %}active{% endif %}">
+        <i class="fa-solid fa-hospital"></i>
+        <span>Healthcare Facilities</span>
+      </a>
+      <a href="{{ url_for('emergency') }}" class="nav-link {% if request.endpoint == 'emergency' %}active{% endif %}">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Emergency Cockpit</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <p>FIT FEST 2026 MVP</p>
+      <small>Flora Institute of Technology</small>
+      <div><span class="tag"><i class="fa-solid fa-shield-halved"></i> Logistics System</span></div>
+    </div>
+  </aside>
+
+  <!-- Main View Area -->
+  <main class="app-main">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="btn-mobile-toggle" aria-label="Toggle navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="date-indicator">
+          <i class="fa-regular fa-clock me-1"></i> {{ today_display }}
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn-emergency-sos" onclick="openModal('quickEmergencyModal')">
+          <i class="fa-solid fa-truck-fast"></i> Rapid SOS Dispatch
+        </button>
+      </div>
+    </header>
+
+    <!-- Important Safety Disclaimer Banner -->
+    <div class="disclaimer-banner">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span><strong>Safety Notice:</strong> CareConnect is strictly an administrative and emergency coordination platform. It does not provide medical diagnosis, treatment recommendations, prescription advice, or clinical decision-making.</span>
+    </div>
+
+    <!-- Page Content Container -->
+    <div class="page-container">
+      <!-- Flash Messages -->
+      <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <span><i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-xmark{% else %}fa-circle-info{% endif %} me-2"></i> {{ message }}</span>
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()" aria-label="Close">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Global Quick Emergency Modal -->
+  <div class="modal-overlay" id="quickEmergencyModal">
+    <div class="modal-box">
+      <div class="modal-header" style="background: #fef2f2; border-bottom-color: #fecaca;">
+        <h3 style="color: #991b1b;"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Rapid Ambulance Dispatch</h3>
+        <button class="modal-close" onclick="closeModal('quickEmergencyModal')">&times;</button>
+      </div>
+      <form action="{{ url_for('create_ambulance_request') }}" method="POST">
+        <div class="modal-body">
+          <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+            Initiate urgent emergency response coordination. (Note: In life-threatening emergencies, also dial 108 immediately).
+          </p>
+          <div class="form-group">
+            <label class="form-label">Patient / Contact Person *</label>
+            <input type="text" name="patient_name" class="form-control" placeholder="e.g. Patient Name or Caller Escort" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Contact Number *</label>
+              <input type="text" name="contact_number" class="form-control" placeholder="+91 98765 43210" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Emergency Level *</label>
+              <select name="emergency_level" class="form-control" required>
+                <option value="Critical" selected>Critical (Highest Priority)</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Normal">Normal</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pickup Location & Landmark *</label>
+            <input type="text" name="pickup_location" class="form-control" placeholder="e.g. Flat 301, Lakeview Apts, Shivaji Nagar" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination Healthcare Facility *</label>
+            <input type="text" name="destination" class="form-control" placeholder="e.g. Flora City General Hospital / Trauma Wing" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('quickEmergencyModal')">Cancel</button>
+          <button type="submit" class="btn btn-danger"><i class="fa-solid fa-paper-plane me-1"></i> Dispatch Ambulance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Client Script -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

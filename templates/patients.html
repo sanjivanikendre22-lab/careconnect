@@ -1,0 +1,309 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Patients Management | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2>Patients Directory</h2>
+    <p>Administrative patient registry for scheduling and emergency contact coordination.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" onclick="openModal('addPatientModal')">
+      <i class="fa-solid fa-user-plus me-1"></i> Register New Patient
+    </button>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="filter-bar">
+  <form action="{{ url_for('patients') }}" method="GET" class="search-form">
+    <input type="text" name="q" class="search-input" placeholder="Search by name, ID, phone, blood group..." value="{{ search_query }}">
+    <button type="submit" class="btn btn-outline"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    {% if search_query %}
+    <a href="{{ url_for('patients') }}" class="btn btn-outline" title="Clear filter"><i class="fa-solid fa-xmark"></i></a>
+    {% endif %}
+  </form>
+  <div style="font-size: 0.85rem; color: #64748b;">
+    Total Records: <strong>{{ patients|length }}</strong>
+  </div>
+</div>
+
+<!-- Patients Table -->
+<div class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Patient ID</th>
+            <th>Name & Details</th>
+            <th>Contact Phone</th>
+            <th>Blood Group</th>
+            <th>Emergency Contact</th>
+            <th>Address</th>
+            <th>Registered</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if patients %}
+            {% for p in patients %}
+            <tr>
+              <td><strong style="color: var(--primary);">{{ p.id }}</strong></td>
+              <td>
+                <div style="font-weight: 600; color: #0f172a;">{{ p.name }}</div>
+                <small class="text-muted">{{ p.age }} yrs • {{ p.gender }}</small>
+              </td>
+              <td>
+                <a href="tel:{{ p.phone }}" style="color: var(--text-main); text-decoration: none;">
+                  <i class="fa-solid fa-phone text-muted me-1"></i> {{ p.phone }}
+                </a>
+              </td>
+              <td>
+                <span class="badge badge-blood">{{ p.blood_group }}</span>
+              </td>
+              <td>
+                <span style="font-size: 0.82rem; color: #dc2626;"><i class="fa-solid fa-shield-halved me-1"></i> {{ p.emergency_contact }}</span>
+              </td>
+              <td>
+                <small style="color: #64748b; max-width: 180px; display: inline-block;">{{ p.address }}</small>
+              </td>
+              <td>
+                <small class="text-muted">{{ p.created_at[:10] }}</small>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="quickBookForPatient('{{ p.id }}', '{{ p.name|escape }}')" title="Book Clinic Visit">
+                  <i class="fa-solid fa-calendar-plus text-primary"></i>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" 
+                  data-id="{{ p.id }}"
+                  data-name="{{ p.name }}"
+                  data-age="{{ p.age }}"
+                  data-gender="{{ p.gender }}"
+                  data-phone="{{ p.phone }}"
+                  data-blood-group="{{ p.blood_group }}"
+                  data-address="{{ p.address }}"
+                  data-emergency-contact="{{ p.emergency_contact }}"
+                  onclick="openEditPatientModal(this)" title="Edit Patient">
+                  <i class="fa-solid fa-pen-to-square text-muted"></i>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="confirmDeletePatient('{{ p.id }}', '{{ p.name|escape }}')" title="Delete Patient">
+                  <i class="fa-solid fa-trash text-danger"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                <i class="fa-solid fa-user-slash fa-2x mb-2"></i><br>
+                No patients found matching your query.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal-overlay" id="addPatientModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-user-plus text-primary me-2"></i> Register New Patient</h3>
+      <button class="modal-close" onclick="closeModal('addPatientModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_patient') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Meera Joshi" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Age *</label>
+            <input type="number" name="age" class="form-control" min="0" max="130" placeholder="e.g. 32" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender *</label>
+            <select name="gender" class="form-control" required>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Phone Number *</label>
+            <input type="text" name="phone" class="form-control" placeholder="+91 98234 56789" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Group *</label>
+            <select name="blood_group" class="form-control" required>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+" selected>O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Residential Address *</label>
+          <input type="text" name="address" class="form-control" placeholder="Flat No, Building, Landmark, City" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emergency Contact (Name, Relation & Phone) *</label>
+          <input type="text" name="emergency_contact" class="form-control" placeholder="e.g. +91 98221 00000 (Spouse)" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('addPatientModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i> Save Patient</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Patient Modal -->
+<div class="modal-overlay" id="editPatientModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-user-pen text-primary me-2"></i> Edit Patient (<span id="edit_patient_id_display"></span>)</h3>
+      <button class="modal-close" onclick="closeModal('editPatientModal')">&times;</button>
+    </div>
+    <form id="editPatientForm" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" id="edit_name" name="name" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Age *</label>
+            <input type="number" id="edit_age" name="age" class="form-control" min="0" max="130" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender *</label>
+            <select id="edit_gender" name="gender" class="form-control" required>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Phone Number *</label>
+            <input type="text" id="edit_phone" name="phone" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Group *</label>
+            <select id="edit_blood_group" name="blood_group" class="form-control" required>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Residential Address *</label>
+          <input type="text" id="edit_address" name="address" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emergency Contact *</label>
+          <input type="text" id="edit_emergency_contact" name="emergency_contact" class="form-control" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('editPatientModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i> Update Details</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deletePatientModal">
+  <div class="modal-box" style="max-width: 440px;">
+    <div class="modal-header" style="background: #fef2f2; border-bottom-color: #fecaca;">
+      <h3 style="color: #991b1b;"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Confirm Deletion</h3>
+      <button class="modal-close" onclick="closeModal('deletePatientModal')">&times;</button>
+    </div>
+    <form id="deletePatientForm" method="POST">
+      <div class="modal-body">
+        <p>Are you sure you want to permanently delete patient <strong id="delete_patient_name"></strong>?</p>
+        <p style="font-size: 0.8rem; color: #dc2626; margin-top: 0.5rem;">All linked appointment records for this patient will also be removed.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('deletePatientModal')">Cancel</button>
+        <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash me-1"></i> Delete Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Book Appointment Quick Modal -->
+<div class="modal-overlay" id="bookAppointmentModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-calendar-plus text-primary me-2"></i> Schedule Clinic Appointment</h3>
+      <button class="modal-close" onclick="closeModal('bookAppointmentModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('book_appointment') }}" method="POST">
+      <div class="modal-body">
+        <input type="hidden" id="book_patient_id" name="patient_id" value="">
+        <div class="form-group">
+          <label class="form-label">Patient Name *</label>
+          <input type="text" id="book_patient_name" name="patient_name" class="form-control" required readonly style="background: #f1f5f9;">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Appointment Date *</label>
+            <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Appointment Time *</label>
+            <select name="time" class="form-control" required>
+              <option value="09:00 AM">09:00 AM</option>
+              <option value="10:00 AM">10:00 AM</option>
+              <option value="11:30 AM">11:30 AM</option>
+              <option value="02:00 PM">02:00 PM</option>
+              <option value="03:30 PM">03:30 PM</option>
+              <option value="05:00 PM">05:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assigned Doctor / Clinic Staff *</label>
+          <select name="doctor_name" class="form-control" required>
+            <option value="Dr. Sneha Mehta (General Physician)">Dr. Sneha Mehta (General Physician)</option>
+            <option value="Dr. Arjun Patil (Orthopedic Surgeon)">Dr. Arjun Patil (Orthopedic Surgeon)</option>
+            <option value="Dr. Rohan Verma (Cardiologist)">Dr. Rohan Verma (Cardiologist)</option>
+            <option value="Dr. Kavita Nair (Pediatrician)">Dr. Kavita Nair (Pediatrician)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purpose of Visit *</label>
+          <input type="text" name="purpose" class="form-control" placeholder="e.g. Routine Health Checkup, Follow-up" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('bookAppointmentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i> Confirm Appointment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

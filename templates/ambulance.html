@@ -1,0 +1,177 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Ambulance Coordination | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2>Ambulance Dispatch & Coordination</h2>
+    <p>Real-time transit logistics, provider dispatching, and emergency transit tracking.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-danger" onclick="openModal('requestAmbulanceModal')">
+      <i class="fa-solid fa-truck-fast me-1"></i> Request Ambulance
+    </button>
+  </div>
+</div>
+
+<!-- Filters & Search -->
+<div class="filter-bar">
+  <div class="filter-tabs">
+    <a href="{{ url_for('ambulance', status='all', level=level_filter, q=search_query) }}" class="filter-btn {% if status_filter == 'All' %}active{% endif %}">All Statuses</a>
+    <a href="{{ url_for('ambulance', status='pending', level=level_filter, q=search_query) }}" class="filter-btn {% if status_filter == 'Pending' %}active{% endif %}">Pending</a>
+    <a href="{{ url_for('ambulance', status='assigned', level=level_filter, q=search_query) }}" class="filter-btn {% if status_filter == 'Assigned' %}active{% endif %}">Assigned</a>
+    <a href="{{ url_for('ambulance', status='en route', level=level_filter, q=search_query) }}" class="filter-btn {% if status_filter == 'En route' or status_filter == 'En Route' %}active{% endif %}">En Route</a>
+    <a href="{{ url_for('ambulance', status='completed', level=level_filter, q=search_query) }}" class="filter-btn {% if status_filter == 'Completed' %}active{% endif %}">Completed</a>
+  </div>
+
+  <form action="{{ url_for('ambulance') }}" method="GET" class="search-form">
+    <select name="level" class="form-control" style="width: auto; padding: 0.45rem 0.75rem; font-size: 0.85rem;" onchange="this.form.submit()">
+      <option value="All" {% if level_filter == 'All' %}selected{% endif %}>All Urgencies</option>
+      <option value="Critical" {% if level_filter == 'Critical' %}selected{% endif %}>Critical Only</option>
+      <option value="Urgent" {% if level_filter == 'Urgent' %}selected{% endif %}>Urgent Only</option>
+      <option value="Normal" {% if level_filter == 'Normal' %}selected{% endif %}>Normal Only</option>
+    </select>
+    <input type="text" name="q" class="search-input" placeholder="Search patient, location, provider..." value="{{ search_query }}">
+    <button type="submit" class="btn btn-outline"><i class="fa-solid fa-magnifying-glass"></i></button>
+    {% if search_query or level_filter != 'All' %}
+    <a href="{{ url_for('ambulance') }}" class="btn btn-outline" title="Clear search"><i class="fa-solid fa-xmark"></i></a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Ambulance Coordination Board -->
+<div class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Req ID</th>
+            <th>Patient / Escort</th>
+            <th>Urgency</th>
+            <th>Pickup & Landmark</th>
+            <th>Destination Facility</th>
+            <th>Provider Assigned</th>
+            <th>Status</th>
+            <th style="text-align: right;">Update Logistics</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if ambulance_requests %}
+            {% for req in ambulance_requests %}
+            <tr style="{% if req.emergency_level == 'Critical' and req.status != 'Completed' and req.status != 'Cancelled' %}background-color: #fffaf0;{% endif %}">
+              <td><strong style="color: var(--primary);">{{ req.id }}</strong></td>
+              <td>
+                <div style="font-weight: 600;">{{ req.patient_name }}</div>
+                <small class="text-muted"><i class="fa-solid fa-phone"></i> <a href="tel:{{ req.contact_number }}" style="color: inherit; text-decoration: none;">{{ req.contact_number }}</a></small><br>
+                <small class="text-muted"><i class="fa-regular fa-clock"></i> {{ req.requested_time }}</small>
+              </td>
+              <td>
+                <span class="badge {% if req.emergency_level == 'Critical' %}badge-critical{% elif req.emergency_level == 'Urgent' %}badge-urgent{% else %}badge-normal{% endif %}">
+                  {{ req.emergency_level }}
+                </span>
+              </td>
+              <td>
+                <div style="font-size: 0.85rem;"><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ req.pickup_location }}</div>
+              </td>
+              <td>
+                <div style="font-size: 0.85rem; color: #0d9488; font-weight: 500;"><i class="fa-solid fa-hospital me-1"></i> {{ req.destination }}</div>
+              </td>
+              <td>
+                <strong style="font-size: 0.82rem; color: #334155;">{{ req.ambulance_provider }}</strong>
+              </td>
+              <td>
+                <span class="badge {% if req.status == 'En Route' %}badge-enroute{% elif req.status == 'Assigned' %}badge-assigned{% elif req.status == 'Completed' %}badge-completed{% elif req.status == 'Cancelled' %}badge-cancelled{% else %}badge-pending{% endif %}">
+                  {{ req.status }}
+                </span>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <form action="{{ url_for('update_ambulance_status', req_id=req.id) }}" method="POST" style="display: inline-flex; gap: 0.35rem; align-items: center;">
+                  <select name="status" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: auto;" onchange="submitStatusForm(this)">
+                    <option value="Pending" {% if req.status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Assigned" {% if req.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+                    <option value="En Route" {% if req.status == 'En Route' %}selected{% endif %}>En Route</option>
+                    <option value="Completed" {% if req.status == 'Completed' %}selected{% endif %}>Completed</option>
+                    <option value="Cancelled" {% if req.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                  </select>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                <i class="fa-solid fa-truck-medical fa-2x mb-2"></i><br>
+                No ambulance dispatch records found.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Request Ambulance Modal -->
+<div class="modal-overlay" id="requestAmbulanceModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-truck-medical text-danger me-2"></i> New Ambulance Dispatch Request</h3>
+      <button class="modal-close" onclick="closeModal('requestAmbulanceModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('create_ambulance_request') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Patient / Escort Caller Name *</label>
+          <input type="text" name="patient_name" class="form-control" placeholder="e.g. Anand Kulkarni" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Contact Phone Number *</label>
+            <input type="text" name="contact_number" class="form-control" placeholder="+91 98220 12345" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Level *</label>
+            <select name="emergency_level" class="form-control" required>
+              <option value="Normal">Normal (Routine Patient Transport)</option>
+              <option value="Urgent">Urgent (Requires Prompt Care)</option>
+              <option value="Critical" selected>Critical (Life/Trauma Support)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pickup Location & Landmark *</label>
+          <input type="text" name="pickup_location" class="form-control" placeholder="Building, Street, Landmark, Area" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Destination Healthcare Facility *</label>
+          <input type="text" name="destination" class="form-control" placeholder="e.g. Flora City General Hospital, Hinjewadi" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assign Ambulance Provider</label>
+            <select name="ambulance_provider" class="form-control">
+              <option value="">-- Choose Provider (Optional) --</option>
+              {% for prov in providers %}
+              <option value="{{ prov }}">{{ prov }}</option>
+              {% endfor %}
+              <option value="Flora Rapid Response #108">Flora Rapid Response #108</option>
+              <option value="City Trauma Response Team A">City Trauma Response Team A</option>
+              <option value="Metro Lifeline Unit 3">Metro Lifeline Unit 3</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Requested Time</label>
+            <input type="text" name="requested_time" class="form-control" placeholder="e.g. Immediate / 10:30 AM">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('requestAmbulanceModal')">Cancel</button>
+        <button type="submit" class="btn btn-danger"><i class="fa-solid fa-paper-plane me-1"></i> Submit Dispatch Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

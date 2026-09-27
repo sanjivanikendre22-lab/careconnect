@@ -1,0 +1,156 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Healthcare Facilities | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2>Healthcare Facilities Directory</h2>
+    <p>Directory of partner hospitals, clinics, accredited blood banks, and ambulance fleets.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" onclick="openModal('addFacilityModal')">
+      <i class="fa-solid fa-plus me-1"></i> Add Facility
+    </button>
+  </div>
+</div>
+
+<!-- Demo notice banner -->
+<div class="alert alert-info" style="margin-bottom: 1.5rem;">
+  <i class="fa-solid fa-circle-info me-2 text-info"></i>
+  <strong>Directory Notice:</strong> Healthcare facilities and provider contact numbers shown are sample/demo directory entries for coordination prototyping.
+</div>
+
+<!-- Type Filter Tabs & Search -->
+<div class="filter-bar">
+  <div class="filter-tabs">
+    <a href="{{ url_for('facilities', type='all', location=location_filter, q=search_query) }}" class="filter-btn {% if type_filter == 'all' %}active{% endif %}">All Facilities</a>
+    <a href="{{ url_for('facilities', type='Hospital', location=location_filter, q=search_query) }}" class="filter-btn {% if type_filter == 'Hospital' %}active{% endif %}">Hospitals</a>
+    <a href="{{ url_for('facilities', type='Clinic', location=location_filter, q=search_query) }}" class="filter-btn {% if type_filter == 'Clinic' %}active{% endif %}">Clinics</a>
+    <a href="{{ url_for('facilities', type='Blood Bank', location=location_filter, q=search_query) }}" class="filter-btn {% if type_filter == 'Blood Bank' %}active{% endif %}">Blood Banks</a>
+    <a href="{{ url_for('facilities', type='Ambulance Provider', location=location_filter, q=search_query) }}" class="filter-btn {% if type_filter == 'Ambulance Provider' %}active{% endif %}">Ambulance Providers</a>
+  </div>
+
+  <form action="{{ url_for('facilities') }}" method="GET" class="search-form">
+    <input type="hidden" name="type" value="{{ type_filter }}">
+    <input type="text" name="location" class="search-input" placeholder="Location area..." value="{{ location_filter }}" style="min-width: 140px;">
+    <input type="text" name="q" class="search-input" placeholder="Search facility name, service..." value="{{ search_query }}" style="min-width: 170px;">
+    <button type="submit" class="btn btn-outline"><i class="fa-solid fa-magnifying-glass"></i></button>
+    {% if location_filter or type_filter != 'all' or search_query %}
+    <a href="{{ url_for('facilities') }}" class="btn btn-outline" title="Reset Filters"><i class="fa-solid fa-xmark"></i></a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Facilities Cards Grid -->
+<div class="grid-cards" style="margin-bottom: 2rem;">
+  {% if facilities %}
+    {% for fac in facilities %}
+    <div class="directory-card">
+      <div>
+        <div class="directory-header">
+          <span class="badge" style="
+            {% if fac.type == 'Hospital' %}background: #dbeafe; color: #1e40af;
+            {% elif fac.type == 'Clinic' %}background: #ccfbf1; color: #0f766e;
+            {% elif fac.type == 'Blood Bank' %}background: #ffe4e6; color: #be123c;
+            {% else %}background: #fef3c7; color: #92400e;{% endif %}">
+            <i class="fa-solid 
+              {% if fac.type == 'Hospital' %}fa-hospital
+              {% elif fac.type == 'Clinic' %}fa-stethoscope
+              {% elif fac.type == 'Blood Bank' %}fa-droplet
+              {% else %}fa-truck-medical{% endif %} me-1"></i>
+            {{ fac.type }}
+          </span>
+          <small class="text-muted">{{ fac.id }}</small>
+        </div>
+
+        <div class="directory-title">{{ fac.name }}</div>
+
+        <div class="directory-info" style="margin-top: 0.65rem;">
+          <div><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ fac.location }}</div>
+          <div><i class="fa-solid fa-phone text-muted me-1"></i> <a href="tel:{{ fac.contact_number }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">{{ fac.contact_number }}</a></div>
+        </div>
+
+        <div style="margin-top: 0.75rem;">
+          <small style="font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Available Services</small>
+          <div class="services-tag-list">
+            {% for srv in fac.services.split(',') %}
+            <span class="service-tag">{{ srv.strip() }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <a href="tel:{{ fac.contact_number }}" class="btn btn-outline btn-sm">
+          <i class="fa-solid fa-phone-volume text-primary me-1"></i> Direct Call
+        </a>
+        {% if fac.type == 'Ambulance Provider' %}
+        <a href="{{ url_for('ambulance') }}" class="btn btn-danger btn-sm">
+          <i class="fa-solid fa-truck-fast me-1"></i> Dispatch
+        </a>
+        {% elif fac.type == 'Blood Bank' %}
+        <a href="{{ url_for('blood') }}" class="btn btn-outline btn-sm">
+          <i class="fa-solid fa-droplet text-danger me-1"></i> Check Needs
+        </a>
+        {% else %}
+        <a href="{{ url_for('appointments') }}" class="btn btn-outline btn-sm">
+          <i class="fa-solid fa-calendar me-1"></i> Schedule
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border-color); color: #94a3b8;">
+      <i class="fa-solid fa-hospital-user fa-2x mb-2"></i><br>
+      No healthcare facilities matching your selected filters.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Add Facility Modal -->
+<div class="modal-overlay" id="addFacilityModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-hospital text-primary me-2"></i> Register Healthcare Facility</h3>
+      <button class="modal-close" onclick="closeModal('addFacilityModal')">&times;</button>
+    </div>
+    <form action="{{ url_for('add_facility') }}" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Facility Name *</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. LifeShield Multispecialty Hospital" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Facility Type *</label>
+            <select name="type" class="form-control" required>
+              <option value="Hospital">Hospital</option>
+              <option value="Clinic">Clinic</option>
+              <option value="Blood Bank">Blood Bank</option>
+              <option value="Ambulance Provider">Ambulance Provider</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Official Contact Phone *</label>
+            <input type="text" name="contact_number" class="form-control" placeholder="+91 20 2555 1234" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location / Address *</label>
+          <input type="text" name="location" class="form-control" placeholder="e.g. Shivaji Nagar, Pune" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Available Services (Comma separated) *</label>
+          <textarea name="services" class="form-control" rows="3" placeholder="e.g. 24x7 Emergency, ICU, Trauma Care, Pharmacy, Diagnostics" required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('addFacilityModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i> Save Facility</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

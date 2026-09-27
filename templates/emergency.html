@@ -1,0 +1,236 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Emergency Coordination Cockpit | CareConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <h2><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Emergency Coordination Cockpit</h2>
+    <p>High-priority mission control for rapid ambulance dispatch, urgent blood matching, and facility transfers.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-emergency-sos" onclick="openModal('quickEmergencyModal')">
+      <i class="fa-solid fa-bolt me-1"></i> Rapid 1-Click SOS Dispatch
+    </button>
+  </div>
+</div>
+
+<!-- Emergency Speed-Dial Hotline Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <a href="tel:108" style="text-decoration: none;">
+    <div class="stat-card" style="border-left: 4px solid #ef4444; background: #fff5f5;">
+      <div class="stat-icon icon-rose">
+        <i class="fa-solid fa-truck-medical"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" style="color: #b91c1c;">108</div>
+        <div class="stat-label">Ambulance Emergency</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="tel:102" style="text-decoration: none;">
+    <div class="stat-card" style="border-left: 4px solid #f59e0b; background: #fffbeb;">
+      <div class="stat-icon icon-amber">
+        <i class="fa-solid fa-baby"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" style="color: #b45309;">102</div>
+        <div class="stat-label">Maternal & Child Transport</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="tel:112" style="text-decoration: none;">
+    <div class="stat-card" style="border-left: 4px solid #3b82f6; background: #eff6ff;">
+      <div class="stat-icon icon-blue">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" style="color: #1d4ed8;">112</div>
+        <div class="stat-label">National SOS Helpline</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="tel:104" style="text-decoration: none;">
+    <div class="stat-card" style="border-left: 4px solid #e11d48; background: #fff1f2;">
+      <div class="stat-icon icon-rose">
+        <i class="fa-solid fa-droplet"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" style="color: #be123c;">104</div>
+        <div class="stat-label">Blood Bank Directory</div>
+      </div>
+    </div>
+  </a>
+
+  <a href="tel:100" style="text-decoration: none;">
+    <div class="stat-card" style="border-left: 4px solid #6366f1; background: #eef2ff;">
+      <div class="stat-icon icon-indigo">
+        <i class="fa-solid fa-building-shield"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value" style="color: #4338ca;">100</div>
+        <div class="stat-label">Police Assistance</div>
+      </div>
+    </div>
+  </a>
+</div>
+
+<!-- Active Critical Logistics Section -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+  <!-- Active Urgent Ambulance Calls -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header" style="background: #fffaf0;">
+      <div class="card-title" style="color: #9a3412;">
+        <i class="fa-solid fa-truck-fast text-danger"></i> Active Priority Dispatches
+      </div>
+      <span class="badge badge-critical">{{ active_ambulances|length }} Active</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Patient / Contact</th>
+              <th>Level</th>
+              <th>Destination</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if active_ambulances %}
+              {% for amb in active_ambulances %}
+              <tr>
+                <td>
+                  <strong>{{ amb.patient_name }}</strong><br>
+                  <small><a href="tel:{{ amb.contact_number }}" style="color: var(--primary); text-decoration: none;"><i class="fa-solid fa-phone"></i> {{ amb.contact_number }}</a></small>
+                </td>
+                <td>
+                  <span class="badge {% if amb.emergency_level == 'Critical' %}badge-critical{% else %}badge-urgent{% endif %}">
+                    {{ amb.emergency_level }}
+                  </span>
+                </td>
+                <td>
+                  <small style="color: #0f172a; font-weight: 500;">{{ amb.destination }}</small><br>
+                  <small class="text-muted"><i class="fa-solid fa-location-arrow"></i> {{ amb.pickup_location }}</small>
+                </td>
+                <td>
+                  <form action="{{ url_for('update_ambulance_status', req_id=amb.id) }}" method="POST">
+                    <select name="status" class="form-control" style="padding: 0.2rem 0.4rem; font-size: 0.78rem;" onchange="submitStatusForm(this)">
+                      <option value="Pending" {% if amb.status == 'Pending' %}selected{% endif %}>Pending</option>
+                      <option value="Assigned" {% if amb.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+                      <option value="En Route" {% if amb.status == 'En Route' %}selected{% endif %}>En Route</option>
+                      <option value="Completed" {% if amb.status == 'Completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 2.5rem; color: #94a3b8;">
+                  <i class="fa-solid fa-circle-check fa-2x mb-2 text-success"></i><br>
+                  No active critical ambulance calls right now.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Urgent Blood Deficit Alerts -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="card-header" style="background: #fff5f5;">
+      <div class="card-title" style="color: #991b1b;">
+        <i class="fa-solid fa-droplet text-danger"></i> Urgent Blood Deficit Alerts
+      </div>
+      <a href="{{ url_for('blood') }}" class="btn btn-outline btn-sm">Full Board</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Units</th>
+              <th>Facility & Location</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if urgent_blood %}
+              {% for b in urgent_blood %}
+              <tr>
+                <td><span class="badge badge-blood">{{ b.blood_group }}</span></td>
+                <td><strong>{{ b.units_required }}</strong></td>
+                <td>
+                  <div style="font-weight: 600; font-size: 0.85rem;">{{ b.hospital_name }}</div>
+                  <small class="text-muted"><i class="fa-solid fa-location-dot"></i> {{ b.location }}</small>
+                </td>
+                <td>
+                  <a href="tel:{{ b.contact_number }}" class="btn btn-outline btn-sm" title="Call Coordinator">
+                    <i class="fa-solid fa-phone text-primary"></i> Call
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 2.5rem; color: #94a3b8;">
+                  No active critical blood deficits.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rapid Transfer Hospital Directory -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-hospital text-primary"></i> 24x7 Emergency Partner Facilities for Rapid Transfer
+    </div>
+    <a href="{{ url_for('facilities') }}" class="btn btn-outline btn-sm">All Facilities</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Facility Name</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Available Services</th>
+            <th>Direct Emergency Line</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fac in emergency_facilities %}
+          <tr>
+            <td><strong>{{ fac.name }}</strong></td>
+            <td>
+              <span class="badge" style="background: #e0f2fe; color: #0369a1;">{{ fac.type }}</span>
+            </td>
+            <td><small><i class="fa-solid fa-location-dot text-muted me-1"></i> {{ fac.location }}</small></td>
+            <td><small class="text-muted">{{ fac.services }}</small></td>
+            <td>
+              <a href="tel:{{ fac.contact_number }}" class="btn btn-outline btn-sm" style="color: var(--primary); font-weight: 600;">
+                <i class="fa-solid fa-phone-volume me-1"></i> {{ fac.contact_number }}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
